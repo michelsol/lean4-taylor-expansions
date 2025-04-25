@@ -1,7 +1,7 @@
 import Lake
 open Lake DSL
 
-package taylor-expansions where
+package taylorexpansions where
   -- add package configuration options here
 
 @[default_target]
