@@ -793,22 +793,40 @@ theorem taylor_sqrt_one_add_littleO_order1 :
 
 end taylor_sqrt_one_add
 
+
 section taylor_ccos
 open Complex Nat
 
-/-- `cos(z) = 1 - z²/2 + ... + (-1)ᵐ z²ᵐ/(2m)! + O(z²ᵐ⁺²)` as `z ⟶ 0`. -/
+-- `cos(z) = 1 - z²/2 + ... + (-1)ᵐ z²ᵐ/(2m)! + O(z²ᵐ⁺²)` as `z ⟶ 0`. -/
 theorem taylor_ccos_bigO (m : ℕ) :
     ∃ (E : ℂ → ℂ), ∃ (C : ℝ) (_ : ∀ᶠ z in 𝓝 0, ‖E z‖ ≤ C),
     ∀ᶠ z in 𝓝 0, cos z = ∑ k ∈ range (m + 1), (-1) ^ k / (2 * k) ! * z ^ (2 * k) + E z * z ^ (2 * m + 2) := by
-  -- TODO: use `Complex.hasSum_cos` instead of reproving the formula
-  convert taylor_bigO_of_series_at_zero_of_differentiableOn_ℂ cos 1 (by norm_num)
-    differentiable_cos.differentiableOn (2 * m + 1) using 10 with E C hE z
-  have h1 : range (2 * m + 1 + 1) = (range (m + 1)).biUnion (λ k ↦ {2 * k, 2 * k + 1}) := by
+  have h1 := taylor_bigO_of_series_at_zero cos (λ j : ℕ ↦ if j % 2 = 0 then (-1) ^ (j / 2) / j ! else 0) 1 (by norm_num) (by
+    intro z hz
+    convert Complex.hasSum_cos z using 0
+    apply hasSum_iff_hasSum_of_ne_zero_bij (λ ⟨k, hk⟩ ↦ 2 * k)
+    . intro ⟨i, hi⟩ ⟨j, hj⟩ hij
+      simp at hij
+      simp [hij]
+    . intro j hj
+      obtain ⟨hj1, hj2, hj3⟩ : j % 2 = 0 ∧ ¬j ! = 0 ∧ (z = 0 → j = 0) := by simpa using hj
+      simp
+      use j / 2
+      split_ands
+      . intro hz; simp [hj3 hz]
+      . convert hj2 using 3; omega
+      . omega
+    . intro ⟨k, hk⟩
+      simp
+      ring
+  ) (2 * m + 1)
+  convert h1 using 10 with E C hE z
+  have h2 : range (2 * m + 1 + 1) = (range (m + 1)).biUnion (λ k ↦ {2 * k, 2 * k + 1}) := by
     ext k
     constructor <;> intro hk <;> simp at hk ⊢
     . use k / 2; omega
     . omega
-  rw [h1, sum_biUnion]
+  rw [h2, sum_biUnion]
   swap
   . intro i hi j hj hij s hsi hsj x hx
     specialize hsi hx
@@ -819,24 +837,11 @@ theorem taylor_ccos_bigO (m : ℕ) :
   intro k hk
   rw [sum_pair (by omega)]
   calc
-    _ = (-1) ^ k / (2 * k) ! * z ^ (2 * k) + 0 / (2 * k + 1) ! * z ^ (2 * k + 1) := by simp
+    _ = (-1) ^ k / ↑(2 * k)! * z ^ (2 * k) + 0 := by simp
     _ = _ := by
-      have c1 k : iteratedDeriv (2 * k) cos 0 = (-1) ^ k ∧ iteratedDeriv (2 * k + 1) cos 0 = 0 := by
-        induction' k with k ih
-        . simp
-        . constructor
-          . calc
-              _ = iteratedDeriv (2 * k + 2) cos 0 := by ring_nf
-              _ = -iteratedDeriv (2 * k) cos 0 := by simp [iteratedDeriv_succ', iteratedDeriv_neg]
-              _ = _ := by rw [ih.left]; ring
-          . calc
-              _ = iteratedDeriv (2 * k + 3) cos 0 := by ring_nf
-              _ = -iteratedDeriv (2 * k + 1) cos 0 := by simp [iteratedDeriv_succ', iteratedDeriv_neg]
-              _ = _ := by rw [ih.right]; ring
-      symm
-      congr 3
-      . exact (c1 k).left
-      . exact (c1 k).right
+      have c1 : (2 * k) % 2 = 0 := by omega
+      have c2 : (2 * k + 1) % 2 ≠ 0 := by omega
+      simp [c1, c2]
 
 /-- `cos(z) = 1 - z²/2 + ... + (-1)ᵐ z²ᵐ/(2m)! + o(z²ᵐ⁺¹)` as `z ⟶ 0`. -/
 theorem taylor_ccos_littleO (m : ℕ) :
@@ -891,5 +896,65 @@ theorem taylor_rcos_littleO_order1 :
 
 end taylor_rcos
 
+
+section taylor_csin
+open Complex Nat
+
+-- `sin(z) = z - z³/6 + ... + (-1)ᵐ z²ᵐ⁺¹/(2m + 1)! + O(z²ᵐ⁺²)` as `z ⟶ 0`. -/
+theorem taylor_csin_bigO (m : ℕ) :
+    ∃ (E : ℂ → ℂ), ∃ (C : ℝ) (_ : ∀ᶠ z in 𝓝 0, ‖E z‖ ≤ C),
+    ∀ᶠ z in 𝓝 0, sin z = ∑ k ∈ range (m + 1), (-1) ^ k / (2 * k + 1) ! * z ^ (2 * k + 1) + E z * z ^ (2 * m + 2) := by
+  have h1 := taylor_bigO_of_series_at_zero sin (λ j : ℕ ↦ if j % 2 = 1 then (-1) ^ (j / 2) / j ! else 0) 1 (by norm_num) (by
+    intro z hz
+    convert Complex.hasSum_sin z using 0
+    apply hasSum_iff_hasSum_of_ne_zero_bij (λ ⟨k, hk⟩ ↦ 2 * k + 1)
+    . intro ⟨i, hi⟩ ⟨j, hj⟩ hij
+      simp at hij
+      simp [hij]
+    . intro j hj
+      obtain ⟨hj1, hj2, hj3⟩ : j % 2 = 1 ∧ ¬j ! = 0 ∧ (z = 0 → j = 0) := by simpa using hj
+      simp
+      use j / 2
+      split_ands
+      . intro hz; specialize hj3 hz; omega
+      . convert hj2 using 3; omega
+      . omega
+    . intro ⟨k, hk⟩
+      have c1 : (2 * k + 1) % 2 = 1 := by omega
+      have c2 : (2 * k + 1) / 2 = k := by omega
+      simp [c1, c2]
+      ring
+  ) (2 * m + 1)
+  convert h1 using 10 with E C hE z
+  have h2 : range (2 * m + 1 + 1) = (range (m + 1)).biUnion (λ k ↦ {2 * k, 2 * k + 1}) := by
+    ext k
+    constructor <;> intro hk <;> simp at hk ⊢
+    . use k / 2; omega
+    . omega
+  rw [h2, sum_biUnion]
+  swap
+  . intro i hi j hj hij s hsi hsj x hx
+    specialize hsi hx
+    specialize hsj hx
+    simp at hsi hsj
+    omega
+  apply sum_congr rfl
+  intro k hk
+  rw [sum_pair (by omega)]
+  calc
+    _ = (-1) ^ k / (2 * k + 1)! * z ^ (2 * k + 1) + 0 := by simp
+    _ = _ := by
+      have c1 : (2 * k) % 2 ≠ 1 := by omega
+      have c2 : (2 * k + 1) % 2 = 1 := by omega
+      have c3 : (2 * k + 1) / 2 = k := by omega
+      simp [c1, c2, c3]
+
+-- `sin(z) = z - z³/6 + ... + (-1)ᵐ z²ᵐ⁺¹/(2m + 1)! + o(z²ᵐ⁺¹)` as `z ⟶ 0`. -/
+theorem taylor_csin_littleO (m : ℕ) :
+    ∃ (e : ℂ → ℂ) (_ : Tendsto e (𝓝 0) (𝓝 0)),
+    ∀ᶠ z in 𝓝 0, sin z = ∑ k ∈ range (m + 1), (-1) ^ k / (2 * k + 1) ! * z ^ (2 * k + 1) + e z * z ^ (2 * m + 1) := by
+  exact taylor_littleO_of_bigO_at_zero (taylor_csin_bigO m)
+
+end taylor_csin
 
 -- Add other trigonometric and hyperbolic functions
